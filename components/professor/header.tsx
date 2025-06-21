@@ -31,7 +31,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
       });
 
       if (response.ok) {
-        router.push("/");
+        window.location.reload();
       } else {
         console.error('Logout failed');
         router.push("/");
@@ -46,7 +46,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
       <div className="flex h-14 items-center justify-between">
         <div className="mr-4 flex items-center">
-          <Link href={"/professor/dashboard"}>
+          <Link href={"/"}>
             <div className="flex items-center">
               <Image src="/logo.png" alt="Logo" width={64} height={64} />
               <div className="pb-1">
@@ -63,7 +63,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
 
         <div className="flex items-center space-x-4">
           <Button className="bg-gradient-to-t from-blue-500 to-blue-600">
-            <Link href="/professor/create" className="flex items-center space-x-1 text-xs sm:text-sm">
+            <Link href="/create" className="flex items-center space-x-1 text-xs sm:text-sm">
               <Plus className="sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Create Project</span>
             </Link>
@@ -90,7 +90,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => {router.push("/professor/update")}} className="bg-blue-50 text-blue-600 hover:!bg-blue-100 hover:!text-blue-600">
+                <DropdownMenuItem onClick={() => {router.push("/update")}} className="bg-blue-50 text-blue-600 hover:!bg-blue-100 hover:!text-blue-600">
                   <SquarePlus className="mr-2 h-4 w-4" />
                   <span>Update Profile</span>
                 </DropdownMenuItem>

@@ -61,7 +61,7 @@ export function ProjectsList({ projects = [], className, ...props }: ProjectsLis
 
 
           <Button asChild className="w-full bg-white text-blue-500 hover:bg-blue-50">
-            <Link href="/professor/create">Create New Project</Link>
+            <Link href="/create">Create New Project</Link>
           </Button>
         </div>
       </CardContent>
@@ -91,12 +91,12 @@ function ProjectCard({ project }: { project: ProfessorProject }) {
       </div>
       <div className="mt-4 flex gap-2">
         <Button variant="outline" asChild className="flex-1">
-          <Link href={`/professor/projects/${project.id}`}>
+          <Link href={`/projects/${project.id}`}>
             View Details
           </Link>
         </Button>
         <Button variant="outline" asChild className="flex-1">
-          <Link href={`/professor/projects/${project.id}/applications`}>
+          <Link href={`/projects/${project.id}/applications`}>
             View Applications
           </Link>
         </Button>
