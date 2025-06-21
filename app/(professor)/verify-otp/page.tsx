@@ -35,7 +35,8 @@ const formSchema = z.object({
 
 function VerifyOTPForm() {
   const [isLoading, setIsLoading] = useState(false);
-  // const [countdown, setCountdown] = useState(60);
+  const [isCountdownReady, setIsCountdownReady] = useState(false)
+  const [countdown, setCountdown] = useState<number>(600)
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
@@ -47,12 +48,37 @@ function VerifyOTPForm() {
     },
   });
 
-  // useEffect(() => {
-  //   if (countdown > 0) {
-  //     const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [countdown]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Sync with localStorage after hydration
+    const otpStartTime = localStorage.getItem('otpStartTime');
+    if (otpStartTime) {
+      const timestamp = parseInt(otpStartTime);
+      const elapsed = Date.now() - timestamp;
+      const COUNTDOWN_DURATION = 10 * 60 * 1000; // 10 minutes
+
+      if (elapsed < COUNTDOWN_DURATION) {
+        const remaining = Math.floor((COUNTDOWN_DURATION - elapsed) / 1000);
+        setCountdown(remaining);
+      } else {
+        localStorage.removeItem('otpStartTime');
+        setCountdown(0);
+      }
+    } else {
+      setCountdown(0); // No stored time, set to 0
+    }
+
+    setIsCountdownReady(true); // Mark as ready after calculation
+  }, []);
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+      return () => clearTimeout(timer)
+    } else if (countdown === 0) {
+      localStorage.removeItem('otpStartTime')
+    }
+  }, [countdown])
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -77,6 +103,7 @@ function VerifyOTPForm() {
       {
         loading: "Verifying OTP...",
         success: () => {
+          localStorage.removeItem('otpStartTime')
           setIsLoading(false)
           return "OTP verified successfully! Redirecting..."
         },
@@ -92,7 +119,7 @@ function VerifyOTPForm() {
     setIsLoading(true);
     try {
       router.push("/login");
-      // setCountdown(60);
+      localStorage.removeItem('otpStartTime')
     } catch (error) {
       console.error("Resend OTP error:", error);
     } finally {
@@ -141,18 +168,22 @@ function VerifyOTPForm() {
           {isLoading ? "Verifying..." : "Verify"}
         </Button>
         <div className="text-center">
-          <div className="text-center text-xs text-blue-500">
-            Code valid for 10 minutes
-          </div>
-          <Button
-            type="button"
-            variant="link"
-            disabled={isLoading}
+          {isCountdownReady && (
+            <div className="text-center text-sm text-blue-600">
+              {countdown > 0
+                ? `Code expires in ${Math.floor(countdown / 60)}:${(countdown % 60).toString().padStart(2, '0')}`
+                : "Code expired"
+              }
+            </div>
+          )}
+          <button
+            disabled={isLoading || countdown > 0}
             onClick={handleResendOTP}
-            className="mx-auto text-blue-600 hover:underline"
+            className={`mx-auto text-xs hover:underline ${countdown > 0 ? "text-gray-400" : "text-blue-500"
+              }`}
           >
             Resend verification code
-          </Button>
+          </button>
         </div>
       </form>
     </Form>
@@ -160,6 +191,12 @@ function VerifyOTPForm() {
 }
 
 export default function VerifyOTPPage() {
+  const [isReady, setIsReady] = useState(false)
+
+  useEffect(() => {
+    // Just mark as ready after hydration
+    setIsReady(true)
+  }, [])
   return (
     <div className="flex min-h-screen items-center justify-center bg-blue-500 px-4 py-12">
       <Card className="w-full max-w-md border border-blue-200">
@@ -173,7 +210,7 @@ export default function VerifyOTPPage() {
         </CardHeader>
         <CardContent>
           <Suspense fallback={<div>Loading...</div>}>
-            <VerifyOTPForm />
+            {isReady ? <VerifyOTPForm /> : <div>Loading...</div>}
           </Suspense>
         </CardContent>
       </Card>
