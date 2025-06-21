@@ -76,6 +76,7 @@ function LoginForm() {
     toast.promise(loginPromise(), {
       loading: "Logging you in...",
       success: (data) => {
+        localStorage.setItem('otpStartTime', Date.now().toString())
         router.push(`/verify-otp?email=${encodeURIComponent(values.email)}`)
         setIsLoading(false)
         return "OTP sent to your email. Please verify to continue."
