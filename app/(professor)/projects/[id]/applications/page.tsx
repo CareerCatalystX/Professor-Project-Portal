@@ -8,13 +8,18 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Inbox, SlidersHorizontal, Check, Filter } from "lucide-react";
+import { Loader2, Inbox, SlidersHorizontal, Check, Filter, X } from "lucide-react";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Document, Page, pdfjs } from 'react-pdf';
+
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
 interface ApplicationStudent {
   name: string;
   email: string;
   branch: string;
   cvUrl?: string;
+  id: string;
   user: {
     name: string;
     email: string
@@ -32,12 +37,6 @@ interface Application {
   project: ApplicationProject;
 }
 
-const getGoogleDriveEmbedUrl = (url: string): string | undefined => {
-  const fileId = url.match(/[-\w]{25,}(?!.*[-\w]{25,})/)?.[0];
-  if (!fileId) return undefined;
-  return `https://drive.google.com/file/d/${fileId}/preview`;
-};
-
 async function fetchApplications(projectId: string | undefined) {
   if (!projectId) return { applications: [] };
 
@@ -46,7 +45,7 @@ async function fetchApplications(projectId: string | undefined) {
     headers: {
       "Content-Type": "application/json",
     },
-    credentials:'include'
+    credentials: 'include'
   });
 
   if (!res.ok) {
@@ -78,13 +77,22 @@ export default function ApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<{ [key: string]: 'ACCEPTED' | 'REJECTED' | null }>({});
-  
+
   // Filter states
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
   const [filterWithCV, setFilterWithCV] = useState<boolean>(false);
   const [filterWithoutCV, setFilterWithoutCV] = useState<boolean>(false);
-  
+
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedStudentProjects, setSelectedStudentProjects] = useState<any[]>([]);
+  const [selectedStudentCV, setSelectedStudentCV] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number>(0);
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -167,6 +175,9 @@ export default function ApplicationsPage() {
       setApplications(prev =>
         prev.map(app => (app.id === applicationId ? { ...app, status } : app))
       );
+      if (selectedApplication && selectedApplication.id === applicationId) {
+        setSelectedApplication(prev => prev ? { ...prev, status } : null);
+      }
     } catch (error) {
       console.error('Error updating status:', error);
     } finally {
@@ -186,6 +197,33 @@ export default function ApplicationsPage() {
   };
 
   const hasActiveFilters = selectedStatus !== 'all' || selectedBranch !== 'all' || filterWithCV || filterWithoutCV;
+
+  const handleApplicationClick = async (application: Application) => {
+    setSelectedApplication(application); // Set the selected application
+    setSelectedStudentId(application.student.id);
+    setIsDrawerOpen(true);
+    setLoadingProjects(true);
+    setPageNumber(1);
+
+    // Set CV URL directly from the application
+    setSelectedStudentCV(application.student.cvUrl || null);
+
+    try {
+      const response = await fetch(`/api/students/${application.student.id}/projects`);
+      if (response.ok) {
+        const data = await response.json();
+        setSelectedStudentProjects(data.projects);
+      }
+    } catch (error) {
+      console.error('Error fetching student projects:', error);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+  };
 
   if (loading) {
     return (
@@ -238,7 +276,7 @@ export default function ApplicationsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    
+
                     <div className="space-y-2">
                       <h4 className="font-medium">Branch</h4>
                       <Select value={selectedBranch} onValueChange={setSelectedBranch}>
@@ -333,14 +371,14 @@ export default function ApplicationsPage() {
             <div className="flex flex-col items-center justify-center gap-4 py-6 sm:py-10">
               <Inbox className="h-16 w-16 text-gray-500" />
               <p className="text-gray-600 text-md sm:text-xl">
-                {applications.length === 0 
-                  ? "No one has applied for this project yet." 
+                {applications.length === 0
+                  ? "No one has applied for this project yet."
                   : "No applications match your current filters."
                 }
               </p>
               {hasActiveFilters && applications.length > 0 && (
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={clearAllFilters}
                   className="text-sm"
                 >
@@ -351,86 +389,17 @@ export default function ApplicationsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredApplications.map((application) => (
-                <Card key={application.id} className="p-4 hover:shadow-lg transition-shadow">
-                  <div className="space-y-3">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex justify-between items-start">
-                        <h3 className="text-lg sm:text-xl font-semibold truncate">
-                          {application.student?.user?.name}
-                        </h3>
-                        <Badge className={getStatusColor(application.status)}>
-                          {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
-                        </Badge>
-                      </div>
-                      <p className="text-sm sm:text-base text-gray-600">
-                        <strong>Email:</strong> {application.student?.user?.email}
-                      </p>
-                      <p className="text-sm sm:text-base text-gray-600">
-                        <strong>Branch:</strong> {application.student.branch}
-                      </p>
+                <Card key={application.id} className="p-4 hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => handleApplicationClick(application)}>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-start">
+                      <h3 className="text-lg font-semibold">{application.student?.user?.name}</h3>
+                      <Badge className={getStatusColor(application.status)}>
+                        {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+                      </Badge>
                     </div>
-
-                    <div className="space-y-2">
-                      <strong className="text-sm sm:text-base">CV:</strong>
-                      {application.student.cvUrl ? (
-                        <div className="space-y-2">
-                          {(() => {
-                            const embedUrl = getGoogleDriveEmbedUrl(application.student.cvUrl!);
-                            return embedUrl ? (
-                              <div className="aspect-[4/3] w-full relative">
-                                <iframe
-                                  src={embedUrl}
-                                  className="absolute inset-0 w-full h-full border rounded"
-                                  title="Student CV"
-                                  allow="autoplay"
-                                />
-                              </div>
-                            ) : (
-                              <div className="text-yellow-600 text-sm">
-                                Invalid Google Drive URL format. Please ensure the CV is shared with proper permissions.
-                              </div>
-                            );
-                          })()}
-                          <a
-                            href={application.student.cvUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 text-sm inline-block"
-                          >
-                            Open CV in new tab
-                          </a>
-                        </div>
-                      ) : (
-                        <span className="text-gray-500 text-sm">No CV available</span>
-                      )}
-                    </div>
-
-                    {application.status === 'PENDING' && (
-                      <div className="flex gap-2 mt-4">
-                        <Button
-                          variant="outline"
-                          className="flex-1 bg-green-50 hover:bg-green-100 text-green-600 hover:text-green-700"
-                          onClick={() => handleStatusUpdate(application.id, 'ACCEPTED')}
-                          disabled={processing[application.id] === 'ACCEPTED' || processing[application.id] === 'REJECTED'}
-                        >
-                          {processing[application.id] === 'ACCEPTED' ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : null}
-                          Accept
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700"
-                          onClick={() => handleStatusUpdate(application.id, 'REJECTED')}
-                          disabled={processing[application.id] === 'ACCEPTED' || processing[application.id] === 'REJECTED'}
-                        >
-                          {processing[application.id] === 'REJECTED' ? (
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          ) : null}
-                          Reject
-                        </Button>
-                      </div>
-                    )}
+                    <p className="text-sm text-gray-600">{application.student?.user?.email}</p>
+                    <p className="text-sm text-gray-600">{application.student.branch}</p>
                   </div>
                 </Card>
               ))}
@@ -438,8 +407,8 @@ export default function ApplicationsPage() {
           )}
 
           <div className="mt-6 flex justify-end">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => router.push('/')}
               className="text-sm sm:text-base"
             >
@@ -448,6 +417,147 @@ export default function ApplicationsPage() {
           </div>
         </CardContent>
       </Card>
+      <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+        <DrawerContent className="h-[70vh]">
+          <DrawerHeader className="flex flex-row items-center justify-between">
+            <DrawerTitle>Student Details</DrawerTitle>
+            {selectedApplication && (
+              <div className="flex items-center gap-2">
+                <Badge className={getStatusColor(selectedApplication.status)}>
+                  {selectedApplication.status.charAt(0).toUpperCase() + selectedApplication.status.slice(1)}
+                </Badge>
+                {selectedApplication.status !== 'PENDING' && (
+                  <Select
+                    value={selectedApplication.status}
+                    onValueChange={(value: 'ACCEPTED' | 'REJECTED') => handleStatusUpdate(selectedApplication.id, value)}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACCEPTED" className="text-green-600">
+                        <div className="flex items-center gap-2">
+                          <Check className="h-4 w-4" />
+                          Accept
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="REJECTED" className="text-red-600">
+                        <div className="flex items-center gap-2">
+                          <X className="h-4 w-4" />
+                          Reject
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+                {selectedApplication.status === 'PENDING' && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-green-50 hover:bg-green-100 text-green-600 hover:text-green-700"
+                      onClick={() => handleStatusUpdate(selectedApplication.id, 'ACCEPTED')}
+                      disabled={processing[selectedApplication.id] === 'ACCEPTED' || processing[selectedApplication.id] === 'REJECTED'}
+                    >
+                      {processing[selectedApplication.id] === 'ACCEPTED' ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Check className="mr-2 h-4 w-4" />
+                      )}
+                      Accept
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700"
+                      onClick={() => handleStatusUpdate(selectedApplication.id, 'REJECTED')}
+                      disabled={processing[selectedApplication.id] === 'ACCEPTED' || processing[selectedApplication.id] === 'REJECTED'}
+                    >
+                      {processing[selectedApplication.id] === 'REJECTED' ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <X className="mr-2 h-4 w-4" />
+                      )}
+                      Reject
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </DrawerHeader>
+          <div className="flex h-full p-4 gap-4">
+            {/* Left side - Projects */}
+            <div className="w-1/2 pr-4">
+              <h3 className="font-semibold mb-3">Applied Projects</h3>
+              {loadingProjects ? (
+                <div className="flex justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : (
+                <div className="space-y-2 overflow-y-auto">
+                  {selectedStudentProjects.map((project) => (
+                    <Card key={project.id} className="p-3">
+                      <h4 className="font-medium text-sm">{project.title}</h4>
+                      <p className="text-xs text-gray-600">{project.professorName}</p>
+                      <p className="text-xs text-gray-500">{project.department}</p>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Right side - CV */}
+            <div className="w-1/2 pl-4 mb-12">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="font-semibold">CV</h3>
+                {selectedStudentCV && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPageNumber(Math.max(1, pageNumber - 1))}
+                      disabled={pageNumber <= 1}
+                    >
+                      Previous
+                    </Button>
+                    <span>{pageNumber} / {numPages}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPageNumber(Math.min(numPages, pageNumber + 1))}
+                      disabled={pageNumber >= numPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {selectedStudentCV ? (
+                <div className="h-full overflow-auto">
+                  <Document
+                    file={selectedStudentCV}
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    loading={<div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}
+                  >
+                    <Page
+                      pageNumber={pageNumber}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                      width={600}
+                      loading={<div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}
+                    />
+                  </Document>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  No CV available
+                </div>
+              )}
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }

@@ -174,7 +174,7 @@ function LoginForm() {
         </CardContent>
         <CardFooter className="flex flex-col space-y-4 border-t border-blue-100 pt-6">
           <div className="flex flex-col gap-2 text-sm text-blue-600/80 w-full">
-            <div className="flex flex-col gap-1 lg:flex-row lg:justify-between">
+            <div className="flex flex-col gap-1">
               <Link
                 href="/forgot-password"
                 className="text-center hover:text-blue-700 transition-colors hover:underline"
@@ -191,12 +191,6 @@ function LoginForm() {
                 </Link>
               </div>
             </div>
-            <Link
-              href="/"
-              className="text-center hover:text-blue-700 transition-colors hover:underline"
-            >
-              Back to Home
-            </Link>
           </div>
         </CardFooter>
       </Card>
