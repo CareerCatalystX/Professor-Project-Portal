@@ -92,6 +92,7 @@ export default function ApplicationsPage() {
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [loadingCV, setLoadingCV] = useState(false);
 
   const router = useRouter();
 
@@ -205,6 +206,10 @@ export default function ApplicationsPage() {
     setLoadingProjects(true);
     setPageNumber(1);
 
+    if (application.student.cvUrl) {
+      setLoadingCV(true);
+    }
+
     // Set CV URL directly from the application
     setSelectedStudentCV(application.student.cvUrl || null);
 
@@ -223,6 +228,11 @@ export default function ApplicationsPage() {
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
+    setLoadingCV(false);
+  };
+
+  const onDocumentLoadError = () => {
+    setLoadingCV(false);
   };
 
   if (loading) {
@@ -418,7 +428,7 @@ export default function ApplicationsPage() {
         </CardContent>
       </Card>
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <DrawerContent className="h-[70vh]">
+        <DrawerContent className="h-[75vh]">
           <DrawerHeader className="flex flex-row items-center justify-between">
             <DrawerTitle>Student Details</DrawerTitle>
             {selectedApplication && (
@@ -485,76 +495,82 @@ export default function ApplicationsPage() {
               </div>
             )}
           </DrawerHeader>
+
           <div className="flex h-full p-4 gap-4">
-            {/* Left side - Projects */}
-            <div className="w-1/2 pr-4">
-              <h3 className="font-semibold mb-3">Applied Projects</h3>
-              {loadingProjects ? (
-                <div className="flex justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                </div>
-              ) : (
-                <div className="space-y-2 overflow-y-auto">
-                  {selectedStudentProjects.map((project) => (
-                    <Card key={project.id} className="p-3">
-                      <h4 className="font-medium text-sm">{project.title}</h4>
-                      <p className="text-xs text-gray-600">{project.professorName}</p>
-                      <p className="text-xs text-gray-500">{project.department}</p>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Right side - CV */}
-            <div className="w-1/2 pl-4 mb-12">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="font-semibold">CV</h3>
-                {selectedStudentCV && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPageNumber(Math.max(1, pageNumber - 1))}
-                      disabled={pageNumber <= 1}
-                    >
-                      Previous
-                    </Button>
-                    <span>{pageNumber} / {numPages}</span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPageNumber(Math.min(numPages, pageNumber + 1))}
-                      disabled={pageNumber >= numPages}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                )}
+            {/* Show single loading state while either projects or CV is loading */}
+            {(loadingProjects && loadingCV) ? (
+              <div className="flex h-full w-full items-center justify-center bg-white">
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-blue-700"></div>
               </div>
+            ) : (
+              <>
+                {/* Left side - Projects */}
+                <div className="w-1/2 pr-4">
+                  <h3 className="font-semibold mb-3">Applied Projects</h3>
+                  <div className="space-y-2 overflow-y-auto">
+                    {selectedStudentProjects.map((project) => (
+                      <Card key={project.id} className="p-3">
+                        <h4 className="font-medium text-sm">{project.title}</h4>
+                        <p className="text-xs text-gray-600">{project.professorName}</p>
+                        <p className="text-xs text-gray-500">{project.department}</p>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
 
-              {selectedStudentCV ? (
-                <div className="h-full overflow-auto">
-                  <Document
-                    file={selectedStudentCV}
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    loading={<div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}
-                  >
-                    <Page
-                      pageNumber={pageNumber}
-                      renderTextLayer={false}
-                      renderAnnotationLayer={false}
-                      width={600}
-                      loading={<div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}
-                    />
-                  </Document>
+                {/* Right side - CV */}
+                <div className="w-1/2 pl-4 flex flex-col">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-semibold">Resume</h3>
+                    {selectedStudentCV && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPageNumber(Math.max(1, pageNumber - 1))}
+                          disabled={pageNumber <= 1}
+                        >
+                          Previous
+                        </Button>
+                        <span>{pageNumber} / {numPages}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPageNumber(Math.min(numPages, pageNumber + 1))}
+                          disabled={pageNumber >= numPages}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedStudentCV ? (
+                    <div className="h-full overflow-auto">
+                      <Document
+                        file={selectedStudentCV}
+                        onLoadSuccess={onDocumentLoadSuccess}
+                        onLoadError={onDocumentLoadError}
+                        loading={<div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}
+                      >
+                        <Page
+                          pageNumber={pageNumber}
+                          renderTextLayer={false}
+                          renderAnnotationLayer={false}
+                          loading={<div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}
+                          width={700}
+                          className="mb-12"
+                        />
+                      </Document>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-500">
+                      No CV available
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="flex items-center justify-center h-full text-gray-500">
-                  No CV available
-                </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
         </DrawerContent>
       </Drawer>
