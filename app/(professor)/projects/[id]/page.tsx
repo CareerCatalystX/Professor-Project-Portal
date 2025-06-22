@@ -190,7 +190,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ id: st
   console.log("Project ID:", id);
   try {
     const data = await fetchProjectDetails(id);
-    console.log("Fetched project data:", data);
     project = data.project;
   } catch (error) {
     console.error("Error fetching project details:", error);
