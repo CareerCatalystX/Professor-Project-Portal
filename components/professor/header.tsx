@@ -48,15 +48,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
         <div className="mr-4 flex items-center">
           <Link href={"/"}>
             <div className="flex items-center">
-              <Image src="/logo.png" alt="Logo" width={64} height={64} />
-              <div className="pb-1">
-                <h1 className="text-xl font-semibold tracking-tight bg-gradient-to-r from-blue-900 via-blue-600 to-blue-900 bg-clip-text text-transparent">
-                  CareerCatalystX
-                </h1>
-                <p className="text-xs bg-gradient-to-r from-purple-950 via-purple-700 to-purple-950 bg-clip-text text-transparent text-center">
-                  Match. Collaborate. Build.
-                </p>
-              </div>
+              <Image src="/logo-master.png" alt="Logo" width={196} height={64} />
             </div>
           </Link>
         </div>
@@ -90,7 +82,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => {router.push("/update")}} className="bg-blue-50 text-blue-600 hover:!bg-blue-100 hover:!text-blue-600">
+                <DropdownMenuItem onClick={() => { router.push("/update") }} className="bg-blue-50 text-blue-600 hover:!bg-blue-100 hover:!text-blue-600">
                   <SquarePlus className="mr-2 h-4 w-4" />
                   <span>Update Profile</span>
                 </DropdownMenuItem>
