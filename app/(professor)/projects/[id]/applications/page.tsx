@@ -124,6 +124,38 @@ export default function ApplicationsPage() {
     )
   }
 
+  const exportAcceptedApplications = () => {
+    const acceptedApps = applications.filter(app => app.status === 'ACCEPTED');
+
+    if (acceptedApps.length === 0) {
+      alert('No accepted applications to export');
+      return;
+    }
+
+    const csvContent = [
+      ['Name', 'Email', 'Branch'], // Header
+      ...acceptedApps.map(app => [
+        app.student?.user?.name || '',
+        app.student?.user?.email || '',
+        app.student.branch || ''
+      ])
+    ];
+
+    const csvString = csvContent.map(row =>
+      row.map(field => `"${field}"`).join(',')
+    ).join('\n');
+
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `accepted_applications_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   useEffect(() => {
     const getApplications = async () => {
       try {
@@ -392,6 +424,20 @@ export default function ApplicationsPage() {
                           onClick={clearAllFilters}
                         >
                           Clear All Filters
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Add this new section */}
+                    {selectedStatus === 'ACCEPTED' && (
+                      <div className="pt-4 border-t">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="w-full bg-green-600 hover:bg-green-700 text-white"
+                          onClick={exportAcceptedApplications}
+                        >
+                          Export Accepted Applications (CSV)
                         </Button>
                       </div>
                     )}
