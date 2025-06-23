@@ -1,10 +1,11 @@
+export const dynamic = "force-dynamic";
 import { fetchProjectDetails } from "@/utils/project-id";
 import { Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import CloseProjectDialog from "@/components/professor/closeDialog";
 
 function ProjectDetails({ project }: { project: any }) {
@@ -185,12 +186,14 @@ function ProjectDetails({ project }: { project: any }) {
 export default async function ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let project: any = null;
+
+  console.log("Project ID:", id);
   try {
     const data = await fetchProjectDetails(id);
     project = data.project;
   } catch (error) {
     console.error("Error fetching project details:", error);
-    redirect('/');
+    notFound();
   }
   if (!project) {
     return (
