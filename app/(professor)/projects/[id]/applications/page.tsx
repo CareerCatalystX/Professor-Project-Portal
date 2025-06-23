@@ -12,7 +12,15 @@ import { Loader2, Inbox, SlidersHorizontal, Check, Filter, X } from "lucide-reac
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Document, Page, pdfjs } from 'react-pdf';
 
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import Placeholder from '@tiptap/extension-placeholder'
+
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+
+interface TiptapDisplayProps {
+  content: string | null
+}
 
 interface ApplicationStudent {
   name: string;
@@ -33,6 +41,7 @@ interface ApplicationProject {
 interface Application {
   id: string;
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  coverLetter: string | null;
   student: ApplicationStudent;
   project: ApplicationProject;
 }
@@ -95,6 +104,25 @@ export default function ApplicationsPage() {
   const [loadingCV, setLoadingCV] = useState(false);
 
   const router = useRouter();
+
+  const TiptapDisplay: React.FC<TiptapDisplayProps> = ({ content }) => {
+    const editor = useEditor({
+      extensions: [
+        StarterKit,
+        Placeholder.configure({
+          placeholder: '',
+        }),
+      ],
+      content: content || '',
+      editable: false,
+    })
+
+    return (
+      <div className="h-56 overflow-y-auto border border-gray-200 rounded-lg bg-gray-50 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+        <EditorContent editor={editor} />
+      </div>
+    )
+  }
 
   useEffect(() => {
     const getApplications = async () => {
@@ -504,17 +532,33 @@ export default function ApplicationsPage() {
               </div>
             ) : (
               <>
-                {/* Left side - Projects */}
-                <div className="w-1/2 pr-4">
-                  <h3 className="font-semibold mb-3">Applied Projects</h3>
-                  <div className="space-y-2 overflow-y-auto">
-                    {selectedStudentProjects.map((project) => (
-                      <Card key={project.id} className="p-3">
-                        <h4 className="font-medium text-sm">{project.title}</h4>
-                        <p className="text-xs text-gray-600">{project.professorName}</p>
-                        <p className="text-xs text-gray-500">{project.department}</p>
-                      </Card>
-                    ))}
+                {/* Left side - Cover Letter and Projects */}
+                <div className="w-1/2 pr-4 flex flex-col">
+                  {/* Cover Letter Section */}
+                  <div className="cover-letter-section">
+                    <h3 className='font-semibold mb-3'>Cover Letter</h3>
+                    {selectedApplication?.coverLetter ? (
+                      <div className="cover-letter-content">
+                        <TiptapDisplay content={selectedApplication.coverLetter} />
+                      </div>
+                    ) : (
+                      <p>No cover letter provided</p>
+                    )}
+                  </div>
+
+                  {/* Applied Projects Section */}
+                  <div className="flex-1">
+                    <h3 className="font-semibold my-3">Applied Projects</h3>
+                    <div className="space-y-2 overflow-y-scroll max-h-40 pb-8 pr-2">
+                      {selectedStudentProjects.map((project) => (
+                        <Card key={project.id} className="p-3 flex-shrink-0">
+                          <h4 className="font-medium text-sm">{project.title}</h4>
+                          <p className="text-xs text-gray-600">{project.professorName}</p>
+                          <p className="text-xs text-gray-500">{project.department}</p>
+                        </Card>
+                      ))}
+                      <p className='text-xs text-red-600 text-center'>End of Application List.</p>
+                    </div>
                   </div>
                 </div>
 
