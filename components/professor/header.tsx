@@ -82,11 +82,11 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => { router.push("/update") }} className="bg-blue-50 text-blue-600 hover:!bg-blue-100 hover:!text-blue-600">
+                <DropdownMenuItem onClick={() => { router.push("/update") }} className="text-blue-600 hover:!bg-blue-100 hover:!text-blue-600 mb-2">
                   <SquarePlus className="mr-2 h-4 w-4" />
                   <span>Update Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleLogout} className="bg-red-50 text-red-600 hover:!bg-red-100 hover:!text-red-600">
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 hover:!bg-red-100 hover:!text-red-600">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
